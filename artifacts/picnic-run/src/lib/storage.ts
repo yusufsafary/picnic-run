@@ -8,7 +8,16 @@ const KEYS = {
   session: 'pr_session',
   streak: 'pr_streak',
   lastRun: 'pr_last_run',
+  leaderboard: 'cc_leaderboard',
 } as const;
+
+export interface LeaderboardEntry {
+  name: string;
+  coins: number;
+  distance: number;
+  time: number;
+  date: string;
+}
 
 export function getStorage<T>(key: string, fallback: T): T {
   try {
@@ -46,4 +55,12 @@ export const Storage = {
   setStreak: (streak: {count: number, lastDate: string}) => setStorage(KEYS.streak, streak),
   getLastRun: () => getStorage<{coins: number, distance: number, time: number} | null>(KEYS.lastRun, null),
   setLastRun: (run: {coins: number, distance: number, time: number} | null) => setStorage(KEYS.lastRun, run),
+  getLeaderboard: () => getStorage<LeaderboardEntry[]>(KEYS.leaderboard, []),
+  addLeaderboardEntry: (entry: LeaderboardEntry) => {
+    const current = getStorage<LeaderboardEntry[]>(KEYS.leaderboard, []);
+    const updated = [...current, entry]
+      .sort((a, b) => b.coins - a.coins || b.distance - a.distance)
+      .slice(0, 10);
+    setStorage(KEYS.leaderboard, updated);
+  },
 };

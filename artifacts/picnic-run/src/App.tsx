@@ -9,6 +9,10 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Game from "@/pages/Game";
 import Results from "@/pages/Results";
+import HowToPlay from "@/pages/HowToPlay";
+import About from "@/pages/About";
+import Settings from "@/pages/Settings";
+import Leaderboard from "@/pages/Leaderboard";
 import NotFound from "@/pages/not-found";
 
 const PageTransition = ({ children }: { children: React.ReactNode }) => (
@@ -46,6 +50,18 @@ function Router() {
         </Route>
         <Route path="/results">
           <PageTransition><Results /></PageTransition>
+        </Route>
+        <Route path="/howtoplay">
+          <PageTransition><HowToPlay /></PageTransition>
+        </Route>
+        <Route path="/about">
+          <PageTransition><About /></PageTransition>
+        </Route>
+        <Route path="/settings">
+          <PageTransition><Settings /></PageTransition>
+        </Route>
+        <Route path="/leaderboard">
+          <PageTransition><Leaderboard /></PageTransition>
         </Route>
         <Route>
           <PageTransition><NotFound /></PageTransition>

@@ -356,6 +356,30 @@ export default function Home() {
           >
             Dashboard →
           </button>
+
+          {/* Bottom quick nav */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.55 }}
+            className="flex justify-center gap-1 w-full mt-2 pt-3 border-t border-white/10"
+          >
+            {[
+              { icon: "📖", label: "How to Play", path: "/howtoplay" },
+              { icon: "🏆", label: "Scores", path: "/leaderboard" },
+              { icon: "⚙️", label: "Settings", path: "/settings" },
+              { icon: "ℹ️", label: "About", path: "/about" },
+            ].map((item) => (
+              <button
+                key={item.path}
+                onClick={() => setLocation(item.path)}
+                className="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl bg-black/20 hover:bg-black/40 backdrop-blur-sm border border-white/10 transition-all"
+              >
+                <span className="text-lg leading-none">{item.icon}</span>
+                <span className="text-white/50 text-[9px] font-bold uppercase tracking-wider leading-none">{item.label}</span>
+              </button>
+            ))}
+          </motion.div>
         </motion.div>
       </div>
     </div>

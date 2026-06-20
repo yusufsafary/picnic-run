@@ -43,6 +43,17 @@ export default function Results() {
     }
     Storage.setCoins(Storage.getCoins() + coins);
     Storage.setRuns(Storage.getRuns() + 1);
+
+    // Save to leaderboard
+    const player = Storage.getPlayer();
+    Storage.addLeaderboardEntry({
+      name: player?.name ?? "Runner",
+      coins,
+      distance: Math.floor(distance),
+      time,
+      date: new Date().toISOString(),
+    });
+
     Storage.setLastRun(null);
   }, []); // eslint-disable-line
 

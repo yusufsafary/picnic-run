@@ -148,6 +148,30 @@ export default function Dashboard() {
           PLAY NOW
         </motion.button>
 
+        {/* Quick links grid */}
+        <motion.div
+          initial={{ y: 16, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="grid grid-cols-2 gap-3 mb-6"
+        >
+          {[
+            { icon: "📖", label: "How to Play", path: "/howtoplay", color: "from-blue-500/15 to-blue-700/5 border-blue-500/25" },
+            { icon: "🏆", label: "Leaderboard", path: "/leaderboard", color: "from-yellow-500/15 to-yellow-700/5 border-yellow-500/25" },
+            { icon: "⚙️", label: "Settings", path: "/settings", color: "from-slate-500/15 to-slate-700/5 border-slate-500/25" },
+            { icon: "ℹ️", label: "About", path: "/about", color: "from-purple-500/15 to-purple-700/5 border-purple-500/25" },
+          ].map((item) => (
+            <button
+              key={item.path}
+              onClick={() => setLocation(item.path)}
+              className={`flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-br ${item.color} border text-left hover:opacity-80 transition-opacity`}
+            >
+              <span className="text-2xl">{item.icon}</span>
+              <span className="font-bold text-foreground text-sm">{item.label}</span>
+            </button>
+          ))}
+        </motion.div>
+
         {/* Logout */}
         {session === "player" && (
           <motion.button
@@ -155,7 +179,7 @@ export default function Dashboard() {
             onClick={handleLogout}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.55 }}
+            transition={{ delay: 0.6 }}
             className="text-muted-foreground/50 text-sm text-center hover:text-destructive transition-colors font-bold uppercase tracking-wider"
           >
             Logout
