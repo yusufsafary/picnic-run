@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Storage } from "@/lib/storage";
-import { playCoin, playJump, playGameOver } from "@/lib/audio";
+import { playCoin, playJump, playGameOver, playLaneSwitch, playSlide, playMilestone, playCombo, playMagnetPickup, startBgMusic, stopBgMusic } from "@/lib/audio";
 import { TutorialOverlay } from "@/components/TutorialOverlay";
 import { WebGLErrorBoundary } from "@/components/WebGLFallback";
 import * as THREE from "three";
@@ -53,6 +53,13 @@ interface GameState {
   coinFlash: number;
   screenShake: number;
   coinBursts: CoinBurst[];
+  combo: number;
+  comboTimer: number;
+  lastCoinTime: number;
+  milestonesHit: number[];
+  magnetActive: boolean;
+  magnetTimer: number;
+  magnetObjs: GameObj[];
 }
 
 function makeState(): GameState {
@@ -66,6 +73,8 @@ function makeState(): GameState {
     spawnTimer: 0, coinSpawnTimer: 0,
     startTime: 0, idCounter: 0, runTime: 0, coinFlash: 0,
     screenShake: 0, coinBursts: [],
+    combo: 0, comboTimer: 0, lastCoinTime: 0,
+    milestonesHit: [], magnetActive: false, magnetTimer: 0, magnetObjs: [],
   };
 }
 
@@ -677,6 +686,73 @@ function SideBarriers() {
   );
 }
 
+
+/* ═══════════════════════════════════════════
+   MAGNET POWER-UP 3D OBJECTS
+═══════════════════════════════════════════ */
+function MagnetObjects({ state }: { state: React.MutableRefObject<GameState> }) {
+  const groupRef = useRef<THREE.Group>(null!);
+  const meshes = useRef<{ mesh: THREE.Group; id: number }[]>([]);
+  const t = useRef(0);
+
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: "#A855F7", metalness: 0.85, roughness: 0.12,
+    emissive: "#7C3AED", emissiveIntensity: 0.9,
+  }), []);
+  const glowMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: "#C084FC", transparent: true, opacity: 0.35,
+    emissive: "#A855F7", emissiveIntensity: 1.2,
+  }), []);
+
+  useFrame((_, delta) => {
+    const gs = state.current;
+    t.current += delta;
+    const move = gs.speed * 60 * delta;
+
+    // Sync with gameState magnetObjs
+    const existing = new Set(meshes.current.map(m => m.id));
+    for (const mo of gs.magnetObjs) {
+      if (!existing.has(mo.id)) {
+        const g = new THREE.Group();
+        // Magnet body - two arms
+        const body = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.1, 8, 16, Math.PI), mat.clone());
+        body.rotation.x = Math.PI / 2;
+        body.position.y = 0.9;
+        const arm1 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.35, 8), mat.clone());
+        arm1.position.set(-0.26, 0.56, 0);
+        const arm2 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.35, 8), mat.clone());
+        arm2.position.set(0.26, 0.56, 0);
+        const glow = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), glowMat.clone());
+        glow.position.y = 0.8;
+        const light = new THREE.PointLight("#A855F7", 2.5, 5);
+        light.position.y = 0.9;
+        g.add(body, arm1, arm2, glow, light);
+        g.position.set(LANES[mo.lane], 0, mo.z);
+        groupRef.current.add(g);
+        meshes.current.push({ mesh: g, id: mo.id });
+      }
+    }
+
+    // Remove gone magnets
+    const activeIds = new Set(gs.magnetObjs.map(m => m.id));
+    for (let i = meshes.current.length - 1; i >= 0; i--) {
+      if (!activeIds.has(meshes.current[i].id)) {
+        groupRef.current.remove(meshes.current[i].mesh);
+        meshes.current.splice(i, 1);
+      }
+    }
+
+    // Animate remaining
+    meshes.current.forEach(({ mesh }) => {
+      mesh.position.z += move;
+      mesh.rotation.y += delta * 2.2;
+      mesh.position.y = Math.sin(t.current * 2.5 + mesh.position.x) * 0.25;
+    });
+  });
+
+  return <group ref={groupRef} />;
+}
+
 /* ═══════════════════════════════════════════
    MAIN GAME SCENE
 ═══════════════════════════════════════════ */
@@ -713,6 +789,18 @@ function GameScene({
     gs.runTime += delta;
     if (gs.coinFlash > 0) gs.coinFlash -= delta;
     if (gs.screenShake > 0) gs.screenShake -= delta;
+    // Combo timer decay
+    if (gs.comboTimer > 0) { gs.comboTimer -= delta; if (gs.comboTimer <= 0) gs.combo = 0; }
+    // Magnet timer
+    if (gs.magnetActive) { gs.magnetTimer -= delta; if (gs.magnetTimer <= 0) { gs.magnetActive = false; gs.magnetTimer = 0; } }
+    // Milestone checks
+    const MILESTONES = [100, 300, 500, 800, 1000];
+    for (const m of MILESTONES) {
+      if (gs.distance >= m && !gs.milestonesHit.includes(m)) {
+        gs.milestonesHit.push(m);
+        playMilestone();
+      }
+    }
 
     // Jump
     if (gs.jumping) {
@@ -755,6 +843,13 @@ function GameScene({
       }
     }
 
+    // Spawn magnet power-up (rare)
+    if (Math.random() < delta * gs.speed * 0.25 && gs.magnetObjs.length < 2) {
+      const lane = Math.floor(Math.random() * 3);
+      const id = gs.idCounter++;
+      gs.magnetObjs.push({ id, lane, z: -70 });
+    }
+
     // Spawn trees
     if (Math.random() < delta * gs.speed * 16) {
       const side = Math.random() > 0.5 ? 7 : -7;
@@ -784,6 +879,33 @@ function GameScene({
       c.group.position.y = 0.7 + Math.sin(gs.runTime * 3.5 + i * 0.8) * 0.2;
       c.z = c.group.position.z;
       if (c.z > 15) { coinGroupRef.current?.remove(c.group); coinMeshes.current.splice(i, 1); }
+    }
+
+    // Move magnet objects
+    for (let i = gs.magnetObjs.length - 1; i >= 0; i--) {
+      const m = gs.magnetObjs[i];
+      m.z += move;
+      if (m.z > 15) { gs.magnetObjs.splice(i, 1); continue; }
+      // Collect magnet
+      if (Math.abs(m.z - PLAYER_Z) < 1.2 && Math.abs(LANES[m.lane] - px) < 1.1) {
+        gs.magnetObjs.splice(i, 1);
+        gs.magnetActive = true;
+        gs.magnetTimer = 5.5;
+        playMagnetPickup();
+        continue;
+      }
+    }
+    // Magnet coin attraction
+    if (gs.magnetActive) {
+      for (const c of coinMeshes.current) {
+        const dx = px - c.group.position.x;
+        const dz = PLAYER_Z - c.group.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < 7) {
+          c.group.position.x += dx * 0.08;
+          c.group.position.z += dz * 0.08;
+        }
+      }
     }
 
     // Move trees
@@ -820,6 +942,16 @@ function GameScene({
         coinMeshes.current.splice(i, 1);
         gs.coins++;
         gs.coinFlash = 0.3;
+        // Combo system
+        const now2 = gs.runTime;
+        if (now2 - gs.lastCoinTime < 1.4) {
+          gs.combo = Math.min(gs.combo + 1, 8);
+          if (gs.combo >= 2) playCombo(gs.combo);
+        } else {
+          gs.combo = 1;
+        }
+        gs.lastCoinTime = now2;
+        gs.comboTimer = 1.4;
         playCoin();
         onCoin();
       }
@@ -881,6 +1013,9 @@ function GameScene({
       <group ref={coinGroupRef} />
       <group ref={treeGroupRef} />
 
+      {/* Magnet power-ups */}
+      <MagnetObjects state={state} />
+
       {/* Dust trail */}
       <DustParticles state={state} />
     </>
@@ -891,10 +1026,11 @@ function GameScene({
    HUD — COINCAR themed
 ═══════════════════════════════════════════ */
 function GameHUD({
-  coins, distance, paused, speed, coinFlash,
+  coins, distance, paused, speed, coinFlash, combo, milestone, magnetActive,
   onPause, onResume, onQuit,
 }: {
   coins: number; distance: number; paused: boolean; speed: number; coinFlash: boolean;
+  combo: number; milestone: number; magnetActive: boolean;
   onPause: () => void; onResume: () => void; onQuit: () => void;
 }) {
   const pct = Math.min(distance / MAX_DISTANCE, 1);
@@ -998,6 +1134,62 @@ function GameHUD({
         </div>
       )}
 
+      {/* Magnet indicator */}
+      <AnimatePresence>
+        {magnetActive && (
+          <motion.div
+            key="magnet"
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+            className="absolute top-24 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-4 py-1.5 rounded-full border backdrop-blur-md pointer-events-none"
+            style={{ background: "rgba(139,92,246,0.35)", borderColor: "rgba(167,139,250,0.6)", boxShadow: "0 0 18px rgba(139,92,246,0.5)" }}
+          >
+            <span className="text-sm">🧲</span>
+            <span className="text-purple-200 text-xs font-bold uppercase tracking-widest">Magnet Active</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Combo display */}
+      <AnimatePresence>
+        {combo >= 2 && (
+          <motion.div
+            key={`combo-${combo}`}
+            initial={{ scale: 0.5, opacity: 0, y: 10 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            className="absolute top-20 right-4 z-20 flex flex-col items-center pointer-events-none"
+          >
+            <span className="text-yellow-300 font-serif font-bold text-2xl drop-shadow-lg" style={{ textShadow: "0 0 12px #F59E0B" }}>
+              x{combo}
+            </span>
+            <span className="text-yellow-400/80 text-[9px] font-bold uppercase tracking-widest">COMBO</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Milestone popup */}
+      <AnimatePresence>
+        {milestone > 0 && (
+          <motion.div
+            key={`ms-${milestone}`}
+            initial={{ scale: 0.5, y: 30, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            exit={{ scale: 0.7, y: -20, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 18 }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-25 flex flex-col items-center gap-1 pointer-events-none"
+          >
+            <div className="px-6 py-3 rounded-3xl backdrop-blur-xl border text-center"
+              style={{ background: "rgba(245,158,11,0.28)", borderColor: "rgba(251,191,36,0.65)", boxShadow: "0 0 40px rgba(245,158,11,0.55)" }}>
+              <p className="text-yellow-200 text-[11px] font-bold uppercase tracking-widest">Milestone!</p>
+              <p className="text-yellow-300 font-serif text-4xl font-bold drop-shadow-lg">{milestone}m</p>
+              <p className="text-yellow-200/70 text-[10px] font-bold uppercase tracking-widest">🎉 Keep Running!</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Coin flash burst */}
       <AnimatePresence>
         {coinFlash && (
@@ -1055,6 +1247,10 @@ export default function Game() {
   const [displayDistance, setDisplayDistance] = useState(0);
   const [displaySpeed, setDisplaySpeed] = useState(0);
   const [displayCoinFlash, setDisplayCoinFlash] = useState(false);
+  const [displayCombo, setDisplayCombo] = useState(0);
+  const [displayMilestone, setDisplayMilestone] = useState(0);
+  const [displayMagnet, setDisplayMagnet] = useState(false);
+  const lastMilestoneRef = useRef(0);
   const [paused, setPaused] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
@@ -1072,6 +1268,17 @@ export default function Game() {
       setDisplayDistance(Math.floor(gs.distance));
       setDisplaySpeed(gs.speed);
       setDisplayCoinFlash(gs.coinFlash > 0);
+      setDisplayCombo(gs.comboTimer > 0 ? gs.combo : 0);
+      setDisplayMagnet(gs.magnetActive);
+      // Milestone popup: show latest milestone hit
+      if (gs.milestonesHit.length > 0) {
+        const latest = gs.milestonesHit[gs.milestonesHit.length - 1];
+        if (latest !== lastMilestoneRef.current) {
+          lastMilestoneRef.current = latest;
+          setDisplayMilestone(latest);
+          setTimeout(() => setDisplayMilestone(0), 2200);
+        }
+      }
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -1091,6 +1298,7 @@ export default function Game() {
     setDisplayCoins(0);
     setDisplayDistance(0);
     setPaused(false);
+    startBgMusic();
   }, []);
 
   const handleTutorialComplete = useCallback(() => {
@@ -1101,6 +1309,7 @@ export default function Game() {
 
   const handleDie = useCallback(() => {
     const gs = stateRef.current;
+    stopBgMusic();
     Storage.setLastRun({ coins: gs.coins, distance: Math.floor(gs.distance), time: Date.now() - gs.startTime });
     setTimeout(() => setLocation("/results"), 1100);
   }, [setLocation]);
@@ -1113,13 +1322,13 @@ export default function Game() {
       if (pausedRef.current) return;
       const gs = stateRef.current;
       if (!gs.running) return;
-      if (e.code === "ArrowLeft" && gs.currentLane > 0) { gs.currentLane--; gs.targetLaneX = LANES[gs.currentLane]; }
-      if (e.code === "ArrowRight" && gs.currentLane < 2) { gs.currentLane++; gs.targetLaneX = LANES[gs.currentLane]; }
+      if (e.code === "ArrowLeft" && gs.currentLane > 0) { gs.currentLane--; gs.targetLaneX = LANES[gs.currentLane]; playLaneSwitch(); }
+      if (e.code === "ArrowRight" && gs.currentLane < 2) { gs.currentLane++; gs.targetLaneX = LANES[gs.currentLane]; playLaneSwitch(); }
       if ((e.code === "Space" || e.code === "ArrowUp") && !gs.jumping && !gs.sliding) {
         e.preventDefault(); gs.jumping = true; gs.jumpTime = 0; playJump();
       }
       if ((e.code === "ArrowDown" || e.code === "KeyS") && !gs.sliding && !gs.jumping) {
-        gs.sliding = true; gs.slideTime = 0;
+        gs.sliding = true; gs.slideTime = 0; playSlide();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -1136,11 +1345,11 @@ export default function Game() {
     if (!gs.running) return;
     if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
     if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx < -25 && gs.currentLane > 0) { gs.currentLane--; gs.targetLaneX = LANES[gs.currentLane]; }
-      else if (dx > 25 && gs.currentLane < 2) { gs.currentLane++; gs.targetLaneX = LANES[gs.currentLane]; }
+      if (dx < -25 && gs.currentLane > 0) { gs.currentLane--; gs.targetLaneX = LANES[gs.currentLane]; playLaneSwitch(); }
+      else if (dx > 25 && gs.currentLane < 2) { gs.currentLane++; gs.targetLaneX = LANES[gs.currentLane]; playLaneSwitch(); }
     } else {
       if (dy < -30 && !gs.jumping && !gs.sliding) { gs.jumping = true; gs.jumpTime = 0; playJump(); }
-      else if (dy > 30 && !gs.sliding && !gs.jumping) { gs.sliding = true; gs.slideTime = 0; }
+      else if (dy > 30 && !gs.sliding && !gs.jumping) { gs.sliding = true; gs.slideTime = 0; playSlide(); }
     }
     touchStart.current = null;
   };
@@ -1185,6 +1394,9 @@ export default function Game() {
           paused={paused}
           speed={displaySpeed}
           coinFlash={displayCoinFlash}
+          combo={displayCombo}
+          milestone={displayMilestone}
+          magnetActive={displayMagnet}
           onPause={() => { setPaused(true); stateRef.current.running = false; }}
           onResume={() => { setPaused(false); stateRef.current.running = true; }}
           onQuit={() => setLocation("/home")}
