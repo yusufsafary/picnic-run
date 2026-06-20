@@ -5,6 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Sky, Float } from "@react-three/drei";
 import { Logo } from "@/components/Logo";
 import { Storage } from "@/lib/storage";
+import { WebGLErrorBoundary } from "@/components/WebGLFallback";
 import * as THREE from "three";
 
 function Character() {
@@ -141,15 +142,17 @@ export default function Home() {
     <div className="relative w-full h-full overflow-hidden">
       {/* 3D Background */}
       <div className="absolute inset-0">
-        <Suspense fallback={<div className="w-full h-full bg-background" />}>
-          <Canvas
-            camera={{ position: [0, 2, 6], fov: 60 }}
-            shadows
-            style={{ background: "transparent" }}
-          >
-            <Scene3D />
-          </Canvas>
-        </Suspense>
+        <WebGLErrorBoundary fallback={<div className="w-full h-full bg-gradient-to-b from-emerald-900/40 to-background" />}>
+          <Suspense fallback={<div className="w-full h-full bg-background" />}>
+            <Canvas
+              camera={{ position: [0, 2, 6], fov: 60 }}
+              shadows
+              style={{ background: "transparent" }}
+            >
+              <Scene3D />
+            </Canvas>
+          </Suspense>
+        </WebGLErrorBoundary>
       </div>
 
       {/* Dark gradient overlay */}

@@ -6,6 +6,7 @@ import { Sky } from "@react-three/drei";
 import { Storage } from "@/lib/storage";
 import { playCoin, playJump, playGameOver } from "@/lib/audio";
 import { TutorialOverlay } from "@/components/TutorialOverlay";
+import { WebGLErrorBoundary } from "@/components/WebGLFallback";
 import * as THREE from "three";
 
 const LANES = [-2, 0, 2] as const;
@@ -667,23 +668,31 @@ export default function Game() {
       onPointerUp={onPointerUp}
     >
       {/* 3D Scene */}
-      <Suspense fallback={<div className="w-full h-full bg-background flex items-center justify-center"><span className="text-foreground font-serif text-2xl">Loading...</span></div>}>
-        <Canvas
-          camera={{ position: [0, 2.8, 6], fov: 65, near: 0.1, far: 120 }}
-          shadows
-          style={{ position: "absolute", inset: 0 }}
-          gl={{ antialias: true, powerPreference: "high-performance" }}
-          dpr={[1, 1.5]}
-        >
-          {gameStarted && (
-            <GameScene
-              state={stateRef}
-              onCoin={handleCoin}
-              onDie={handleDie}
-            />
-          )}
-        </Canvas>
-      </Suspense>
+      <WebGLErrorBoundary fallback={
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background gap-4">
+          <span className="text-5xl">🎮</span>
+          <p className="text-foreground font-serif text-xl">WebGL not available in this browser</p>
+          <button onClick={() => setLocation("/home")} className="text-muted-foreground text-sm font-bold uppercase tracking-widest">← Back</button>
+        </div>
+      }>
+        <Suspense fallback={<div className="absolute inset-0 bg-background flex items-center justify-center"><span className="text-foreground font-serif text-2xl">Loading...</span></div>}>
+          <Canvas
+            camera={{ position: [0, 2.8, 6], fov: 65, near: 0.1, far: 120 }}
+            shadows
+            style={{ position: "absolute", inset: 0 }}
+            gl={{ antialias: true, powerPreference: "high-performance" }}
+            dpr={[1, 1.5]}
+          >
+            {gameStarted && (
+              <GameScene
+                state={stateRef}
+                onCoin={handleCoin}
+                onDie={handleDie}
+              />
+            )}
+          </Canvas>
+        </Suspense>
+      </WebGLErrorBoundary>
 
       {/* HUD */}
       {gameStarted && !showTutorial && (
