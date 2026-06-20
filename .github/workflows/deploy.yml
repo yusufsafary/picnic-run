@@ -50,7 +50,7 @@ jobs:
         run: pnpm --filter @workspace/picnic-run run build
         env:
           NODE_ENV: production
-          BASE_PATH: /picnic-run/
+          BASE_PATH: /
           PORT: 3000
 
       - name: Setup Pages

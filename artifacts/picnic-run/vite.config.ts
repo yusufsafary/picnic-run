@@ -38,12 +38,13 @@ export default defineConfig({
       manifest: {
         name: 'Picnic Run',
         short_name: 'PicnicRun',
-        description: 'Race to the picnic spot! A 3D endless runner by Arthouse Studio',
+        description: 'Race through a lush forest, dodge obstacles, collect golden coins! 3D endless runner by Arthouse Studio.',
         theme_color: '#0d4f3c',
         background_color: '#071a14',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        id: '/',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
