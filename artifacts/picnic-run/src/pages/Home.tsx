@@ -380,6 +380,40 @@ export default function Home() {
               </button>
             ))}
           </motion.div>
+
+          {/* easya + X branding */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="flex items-center justify-center gap-3 mt-3 pt-2"
+          >
+            <span className="text-white/25 text-[9px] uppercase tracking-widest font-semibold">Powered by</span>
+            <a
+              href="https://easya.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 backdrop-blur-sm transition-all"
+            >
+              <svg width="14" height="14" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="10" fill="#6EE7B7"/>
+                <path d="M10 28L20 12L30 28H10Z" fill="#064E3B" opacity="0.9"/>
+                <path d="M15 28L20 20L25 28H15Z" fill="#6EE7B7" opacity="0.8"/>
+              </svg>
+              <span className="text-white/80 font-bold text-xs tracking-tight">easya</span>
+            </a>
+            <a
+              href="https://x.com/Yugobyte_"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 backdrop-blur-sm transition-all"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.259 5.63L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/>
+              </svg>
+              <span className="text-white/60 text-[10px] font-semibold">@Yugobyte_</span>
+            </a>
+          </motion.div>
         </motion.div>
       </div>
     </div>
