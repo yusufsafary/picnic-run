@@ -36,9 +36,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Picnic Run',
-        short_name: 'PicnicRun',
-        description: 'Race through a lush forest, dodge obstacles, collect golden coins! 3D endless runner by Arthouse Studio.',
+        name: 'COINCAR',
+        short_name: 'COINCAR',
+        description: 'Run, dodge, collect! A free 3D endless runner — sprint through vibrant worlds and grab golden coins.',
         theme_color: '#0d4f3c',
         background_color: '#071a14',
         display: 'standalone',

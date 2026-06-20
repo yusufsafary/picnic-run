@@ -2,31 +2,32 @@ export function Logo({ className = "" }: { className?: string }) {
   return (
     <div className={`flex flex-col items-center justify-center ${className}`}>
       <svg
-        width="64"
-        height="64"
-        viewBox="0 0 64 64"
+        width="72"
+        height="72"
+        viewBox="0 0 72 72"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="mb-2 drop-shadow-md"
+        className="mb-2 drop-shadow-2xl"
       >
-        <rect width="64" height="64" rx="16" fill="hsl(var(--primary))" />
+        <rect width="72" height="72" rx="20" fill="#0D4A38" />
+        {/* Coin circle */}
+        <circle cx="36" cy="36" r="24" fill="#F59E0B" />
+        <circle cx="36" cy="36" r="19" fill="#D97706" />
+        <circle cx="36" cy="36" r="15" fill="#F59E0B" />
+        {/* C letter */}
         <path
-          d="M20 44L28 32L24 24L36 16L40 28L32 36L44 48"
-          stroke="hsl(var(--secondary))"
-          strokeWidth="6"
+          d="M43 28a11 11 0 1 0 0 16"
+          stroke="#7C2D0A"
+          strokeWidth="4.5"
           strokeLinecap="round"
-          strokeLinejoin="round"
+          fill="none"
         />
-        <circle cx="42" cy="18" r="6" fill="hsl(var(--secondary))" />
-        <rect x="12" y="32" width="12" height="10" rx="2" fill="#D97706" />
-        <path d="M12 32L18 24L24 32" stroke="#B45309" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Shine */}
+        <ellipse cx="30" cy="28" rx="4" ry="2.5" fill="white" opacity="0.35" transform="rotate(-30 30 28)" />
       </svg>
-      <h1 className="font-serif text-3xl font-bold tracking-wider text-secondary drop-shadow-sm uppercase">
-        PICNIC RUN
+      <h1 className="font-serif text-4xl font-bold tracking-widest text-secondary drop-shadow-lg uppercase">
+        COINCAR
       </h1>
-      <p className="font-sans text-sm font-semibold text-primary-foreground tracking-widest uppercase opacity-90">
-        by Arthouse
-      </p>
     </div>
   );
 }
